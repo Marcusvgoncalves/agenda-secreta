@@ -1,0 +1,82 @@
+/* Estilos gerais do corpo da página */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5; /* Um cinza bem claro para o fundo */
+    color: #333;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+}
+
+/* Container principal da nossa aplicação */
+main {
+    max-width: 600px; /* Largura máxima para não ficar muito largo em telas grandes */
+    margin: 40px auto; /* Centraliza o container na página */
+    padding: 20px 30px;
+    background-color: #ffffff;
+    border-radius: 8px; /* Bordas arredondadas */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Sombra suave para um efeito "flutuante" */
+}
+
+h1, h2 {
+    text-align: center;
+    color: #1c1e21;
+}
+
+/* Estilizando o formulário */
+#form-novo-segredo {
+    display: flex; /* Alinha os itens (input e botão) em uma linha */
+    gap: 10px; /* Espaço entre o input e o botão */
+    margin-bottom: 30px;
+}
+
+#input-segredo {
+    flex-grow: 1; /* Faz o campo de texto crescer para ocupar o espaço disponível */
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+button {
+    padding: 10px 15px;
+    background-color: #1877f2; /* Azul do Facebook :) */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer; /* Muda o cursor para uma "mãozinha" ao passar por cima */
+    transition: background-color 0.2s; /* Efeito suave na mudança de cor */
+}
+
+button:hover {
+    background-color: #166fe5; /* Um azul um pouco mais escuro ao passar o mouse */
+}
+
+/* Estilizando a lista de segredos */
+#lista-segredos {
+    list-style-type: none; /* Remove as bolinhas da lista */
+    padding: 0;
+}
+
+/* Estilos para cada item da lista (que vamos criar com JavaScript) */
+.item-segredo {
+    display: flex;
+    justify-content: space-between; /* Coloca o texto de um lado e o botão de outro */
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.item-segredo:last-child {
+    border-bottom: none; /* Remove a borda do último item */
+}
+
+.item-segredo button {
+    background-color: #fa3e3e; /* Vermelho para o botão de deletar */
+}
+
+.item-segredo button:hover {
+    background-color: #e33030;
+}
