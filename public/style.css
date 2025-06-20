@@ -80,3 +80,56 @@ button:hover {
 .item-segredo button:hover {
     background-color: #e33030;
 }
+
+.botao-editar {
+    background-color: #007bff; /* Um azul para diferenciar */
+    margin-right: 8px; /* Espaço entre os botões de editar e deletar */
+}
+
+.botao-editar:hover {
+    background-color: #0056b3;
+}
+
+/* Classe utilitária para esconder elementos */
+.hidden {
+    display: none;
+}
+
+/* Estilos para o formulário de login */
+#form-login {
+    display: flex;
+    flex-direction: column; /* Itens um embaixo do outro */
+    gap: 15px; /* Espaço entre os itens */
+}
+
+#form-login label {
+    font-weight: bold;
+}
+
+/* Estilos para a mensagem de erro do login */
+.mensagem-erro {
+    color: #fa3e3e;
+    text-align: center;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* Estilos para o cabeçalho da tela principal */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+header h1 {
+    margin: 0;
+}
+
+#botao-logout {
+    background-color: #6c757d; /* Cinza */
+}
+
+#botao-logout:hover {
+    background-color: #5a6268;
+}

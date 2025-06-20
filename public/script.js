@@ -1,129 +1,175 @@
-// --- CONFIGURAÇÃO E VARIÁVEIS GLOBAIS ---
+// ======================================================
+//        VERSÃO FINAL E CORRIGIDA - SCRIPT.JS
+// ======================================================
 
-// URL da nossa API. Lembre-se que ela está rodando na porta 3000
-const apiUrl = 'http://localhost:3000/segredos';
-// A chave de API que o nosso backend espera.
-// Lembre-se de usar a mesma chave que está no seu arquivo .env!
-const apiKey = 'BatatinhaQuandoNasce123SuperSecreta'; 
-
-// Selecionando os elementos do HTML com os quais vamos interagir
-const listaSegredos = document.getElementById('lista-segredos');
+// --- SELETORES DE ELEMENTOS ---
+const telaLogin = document.getElementById('tela-login');
+const telaPrincipal = document.getElementById('tela-principal');
+const formLogin = document.getElementById('form-login');
+const inputEmailLogin = document.getElementById('input-email');
+const inputSenhaLogin = document.getElementById('input-senha');
+const mensagemLogin = document.getElementById('mensagem-login');
+const botaoLogout = document.getElementById('botao-logout');
 const formNovoSegredo = document.getElementById('form-novo-segredo');
 const inputSegredo = document.getElementById('input-segredo');
+const listaSegredos = document.getElementById('lista-segredos');
 
-// --- FUNÇÕES ---
+// --- ENDPOINTS DA API ---
+const authUrl = 'http://localhost:3000/auth';
+const segredosUrl = 'http://localhost:3000/segredos';
 
-/**
- * Função principal: Busca todos os segredos na API e os exibe na tela.
- */
-async function buscarEExibirSegredos() {
-    // Limpa a lista atual para não duplicar itens ao recarregar
-    listaSegredos.innerHTML = '';
+// --- FUNÇÕES DE CONTROLE DE TELA ---
 
+function mostrarTelaLogin() {
+    telaLogin.classList.remove('hidden');
+    telaPrincipal.classList.add('hidden');
+}
+
+async function mostrarTelaPrincipal() {
+    telaLogin.classList.add('hidden');
+    telaPrincipal.classList.remove('hidden');
+    await buscarEExibirSegredos();
+}
+
+// --- FUNÇÕES DE EVENTOS ---
+
+async function handleLogin(event) {
+    event.preventDefault();
+    mensagemLogin.textContent = '';
+    const email = inputEmailLogin.value;
+    const senha = inputSenhaLogin.value;
     try {
-        // Fazendo a requisição GET para a nossa API
-        const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-                'x-api-key': apiKey // Enviando nossa chave de API no cabeçalho
-            }
+        const response = await fetch(`${authUrl}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, senha })
         });
-
-        // Se a resposta não for OK (ex: erro de autenticação), lança um erro
+        const data = await response.json();
         if (!response.ok) {
-            throw new Error('Falha ao buscar segredos. Verifique a chave de API.');
+            throw new Error(data.mensagem || 'Credenciais inválidas.');
         }
-
-        // Converte a resposta em JSON
-        const segredos = await response.json();
-
-        // Para cada segredo recebido, cria um item na lista (<li>)
-        segredos.forEach(segredo => {
-            const itemLista = document.createElement('li');
-            itemLista.className = 'item-segredo'; // Adiciona a classe CSS que criamos
-
-            const textoSegredo = document.createElement('span');
-            textoSegredo.textContent = segredo.texto;
-
-            const botaoDeletar = document.createElement('button');
-            botaoDeletar.textContent = 'Deletar';
-            // Adiciona um "ouvinte" que chama a função deletarSegredo quando o botão é clicado
-            botaoDeletar.addEventListener('click', () => deletarSegredo(segredo.id));
-
-            itemLista.appendChild(textoSegredo);
-            itemLista.appendChild(botaoDeletar);
-            listaSegredos.appendChild(itemLista);
-        });
-
+        localStorage.setItem('jwtToken', data.token);
+        init();
     } catch (error) {
-        console.error('Erro:', error);
-        alert('Não foi possível carregar os segredos. Verifique o console para mais detalhes.');
+        mensagemLogin.textContent = error.message;
     }
 }
 
-/**
- * Função para adicionar um novo segredo.
- */
-async function adicionarSegredo(event) {
-    // Previne o comportamento padrão do formulário, que é recarregar a página
-    event.preventDefault(); 
+function handleLogout() {
+    localStorage.removeItem('jwtToken');
+    init();
+}
 
+async function handleAddSegredo(event) {
+    event.preventDefault();
     const texto = inputSegredo.value;
+    if (!texto) return;
+    await adicionarSegredo(texto);
+    inputSegredo.value = '';
+}
 
+// --- FUNÇÕES DE INTERAÇÃO COM A API ---
+
+async function buscarEExibirSegredos() {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return;
+    listaSegredos.innerHTML = '<li>Carregando...</li>';
     try {
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json', // Informa que estamos enviando JSON
-                'x-api-key': apiKey
-            },
-            // Converte nosso objeto JavaScript em uma string JSON para enviar
-            body: JSON.stringify({ segredo: texto }) 
+        const response = await fetch(segredosUrl, {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
-
-        if (!response.ok) {
-            throw new Error('Falha ao adicionar segredo.');
+        if (!response.ok) throw new Error('Falha ao buscar segredos.');
+        const segredos = await response.json();
+        listaSegredos.innerHTML = '';
+        if (segredos.length === 0) {
+            listaSegredos.innerHTML = '<li>Nenhum segredo guardado ainda.</li>';
+            return;
         }
-
-        inputSegredo.value = ''; // Limpa o campo de texto após o envio
-        buscarEExibirSegredos(); // Recarrega a lista para mostrar o novo segredo
-
+        segredos.forEach(segredo => {
+            const itemLista = document.createElement('li');
+            itemLista.className = 'item-segredo';
+            const textoSegredo = document.createElement('span');
+            textoSegredo.textContent = segredo.texto;
+            const divBotoes = document.createElement('div');
+            const botaoEditar = document.createElement('button');
+            botaoEditar.textContent = 'Editar';
+            botaoEditar.className = 'botao-editar';
+            botaoEditar.addEventListener('click', () => editarSegredo(segredo.id, segredo.texto));
+            const botaoDeletar = document.createElement('button');
+            botaoDeletar.textContent = 'Deletar';
+            botaoDeletar.addEventListener('click', () => deletarSegredo(segredo.id));
+            divBotoes.appendChild(botaoEditar);
+            divBotoes.appendChild(botaoDeletar);
+            itemLista.appendChild(textoSegredo);
+            itemLista.appendChild(divBotoes);
+            listaSegredos.appendChild(itemLista);
+        });
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro ao buscar segredos:', error);
+        listaSegredos.innerHTML = '<li>Erro ao carregar segredos.</li>';
+    }
+}
+
+async function adicionarSegredo(texto) {
+    const token = localStorage.getItem('jwtToken');
+    try {
+        const response = await fetch(segredosUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ segredo: texto })
+        });
+        if (!response.ok) throw new Error('Falha ao adicionar segredo.');
+        await buscarEExibirSegredos();
+    } catch (error) {
+        console.error('Erro ao adicionar segredo:', error);
         alert('Não foi possível adicionar o segredo.');
     }
 }
 
-/**
- * Função para deletar um segredo específico pelo seu ID.
- */
-async function deletarSegredo(id) {
+async function editarSegredo(id, textoAtual) {
+    const token = localStorage.getItem('jwtToken');
+    const novoTexto = prompt('Edite seu segredo:', textoAtual);
+    if (novoTexto === null || novoTexto.trim() === '') return;
     try {
-        // Note como o ID é adicionado à URL para especificar qual segredo deletar
-const response = await fetch(`${apiUrl}/${id}`, {
-    method: 'DELETE',
-    headers: {
-        'x-api-key': apiKey
-    }
-});
-
-        if (!response.ok) {
-            throw new Error('Falha ao deletar segredo.');
-        }
-
-        buscarEExibirSegredos(); // Recarrega a lista para mostrar que o item foi removido
-
+        const response = await fetch(`${segredosUrl}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ segredo: novoTexto })
+        });
+        if (!response.ok) throw new Error('Falha ao editar segredo.');
+        await buscarEExibirSegredos();
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro ao editar segredo:', error);
+        alert('Não foi possível editar o segredo.');
+    }
+}
+
+async function deletarSegredo(id) {
+    const token = localStorage.getItem('jwtToken');
+    try {
+        const response = await fetch(`${segredosUrl}/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Falha ao deletar segredo.');
+        await buscarEExibirSegredos();
+    } catch (error) {
+        console.error('Erro ao deletar segredo:', error);
         alert('Não foi possível deletar o segredo.');
     }
 }
 
+// --- PONTO DE ENTRADA DA APLICAÇÃO ---
+function init() {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+        mostrarTelaPrincipal();
+    } else {
+        mostrarTelaLogin();
+    }
+    formLogin.addEventListener('submit', handleLogin);
+    botaoLogout.addEventListener('click', handleLogout);
+    formNovoSegredo.addEventListener('submit', handleAddSegredo);
+}
 
-// --- INICIALIZAÇÃO ---
-
-// Adiciona o "ouvinte" ao formulário para chamar a função adicionarSegredo no evento 'submit'
-formNovoSegredo.addEventListener('submit', adicionarSegredo);
-
-// Chama a função principal para carregar os dados assim que a página é aberta
-buscarEExibirSegredos();
+init();
