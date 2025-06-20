@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors'); // <-- ADICIONE ESTA LINHA AQUI
 const { abrirBancoDeDados } = require('./database.js'); // Importamos nossa função
+const authRoutes = require('./authRoutes.js'); // <-- 1. IMPORTAR AS NOVAS ROTAS
 
 const app = express();
 const port = 3000;
@@ -20,7 +21,10 @@ const autenticar = (req, res, next) => {
 
 app.use(express.json());
 app.use(cors()); // <-- ADICIONE ESTA LINHA AQUI
+// --- ROTAS ---
+app.use('/auth', authRoutes); // <-- 2. USAR AS ROTAS DE AUTENTICAÇÃO
 app.use('/segredos', autenticar);
+
 
 // READ (GET) - Agora busca no banco de dados
 app.get('/segredos', async (req, res) => {
