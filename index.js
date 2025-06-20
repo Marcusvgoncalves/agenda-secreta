@@ -4,6 +4,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken'); // <-- 1. IMPORTAR A BIBLIOTECA JWT
 const { abrirBancoDeDados } = require('./database.js');
 const authRoutes = require('./authRoutes.js');
+const helmet = require('helmet');
 
 const app = express();
 const port = 3000;
@@ -40,6 +41,7 @@ const autenticar = (req, res, next) => {
 
 app.use(express.json());
 app.use(cors());
+app.use(helmet()); // <-- ADICIONE ESTA LINHA AQUI
 
 // --- ROTAS ---
 app.use('/auth', authRoutes); 
