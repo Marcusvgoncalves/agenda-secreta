@@ -14,11 +14,13 @@ async function configurarBancoDeDados() {
     // 1. Comando para criar a tabela de segredos (já existia)
     await db.exec(`
         CREATE TABLE IF NOT EXISTS segredos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            texto TEXT NOT NULL,
-            data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `);
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        texto TEXT NOT NULL,
+        data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+        usuario_id INTEGER,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+    )
+`);
 
     // 2. ADIÇÃO: Comando para criar a nova tabela de usuários
     await db.exec(`

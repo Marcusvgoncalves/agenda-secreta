@@ -1,89 +1,114 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors'); // <-- ADICIONE ESTA LINHA AQUI
-const { abrirBancoDeDados } = require('./database.js'); // Importamos nossa função
-const authRoutes = require('./authRoutes.js'); // <-- 1. IMPORTAR AS NOVAS ROTAS
+const cors = require('cors');
+const jwt = require('jsonwebtoken'); // <-- 1. IMPORTAR A BIBLIOTECA JWT
+const { abrirBancoDeDados } = require('./database.js');
+const authRoutes = require('./authRoutes.js');
 
 const app = express();
 const port = 3000;
+
+// A CHAVE_SECRETA_API não é mais necessária, pode ser removida.
+// const CHAVE_SECRETA_API = process.env.API_KEY;
 
 const CHAVE_SECRETA_API = process.env.API_KEY;
 // ADICIONE ESTA LINHA PARA DEBUGAR:
 console.log('Chave secreta carregada pelo servidor:', CHAVE_SECRETA_API);
 
+// 2. REESCREVER COMPLETAMENTE O MIDDLEWARE DE AUTENTICAÇÃO
 const autenticar = (req, res, next) => {
-    const apiKey = req.headers['x-api-key'];
-    if (!apiKey || apiKey !== CHAVE_SECRETA_API) {
-        return res.status(403).send('Acesso proibido.');
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Extrai o token do "Bearer <token>"
+
+    if (token == null) {
+        return res.status(401).send({ mensagem: 'Token não fornecido.' }); // Não autorizado
     }
-    next();
+
+    // Tenta verificar o token
+    jwt.verify(token, process.env.JWT_SECRET, (err, usuario) => {
+        if (err) {
+            return res.status(403).send({ mensagem: 'Token inválido ou expirado.' }); // Proibido
+        }
+
+        // IMPORTANTE: Se o token é válido, nós "anexamos" os dados do usuário
+        // na própria requisição, para que as rotas seguintes saibam quem fez o pedido.
+        req.usuario = usuario; 
+
+        next(); // O usuário é válido, pode prosseguir para a próxima rota.
+    });
 };
 
 app.use(express.json());
-app.use(cors()); // <-- ADICIONE ESTA LINHA AQUI
+app.use(cors());
+
 // --- ROTAS ---
-app.use('/auth', authRoutes); // <-- 2. USAR AS ROTAS DE AUTENTICAÇÃO
-app.use('/segredos', autenticar);
+app.use('/auth', authRoutes); 
+app.use('/segredos', autenticar); // Nosso segurança agora valida JWTs!
 
+// --- ROTAS DE SEGREDOS ATUALIZADAS ---
 
-// READ (GET) - Agora busca no banco de dados
+// READ (GET) - Lista apenas os segredos DO usuário logado
 app.get('/segredos', async (req, res) => {
+    const usuarioId = req.usuario.id; // Pegamos o ID do usuário a partir do token!
     const db = await abrirBancoDeDados();
-    const segredos = await db.all('SELECT * FROM segredos'); // SQL para selecionar tudo
+    const segredos = await db.all('SELECT * FROM segredos WHERE usuario_id = ?', [usuarioId]);
     await db.close();
     res.json(segredos);
 });
 
-// CREATE (POST) - Agora insere no banco de dados
+// CREATE (POST) - Cria um segredo VINCULADO ao usuário logado
 app.post('/segredos', async (req, res) => {
     const textoDoSegredo = req.body.segredo;
+    const usuarioId = req.usuario.id; // Pegamos o ID do usuário
     if (!textoDoSegredo || textoDoSegredo.trim() === "") {
         return res.status(400).send({ mensagem: 'O segredo não pode ser vazio.' });
     }
 
     const db = await abrirBancoDeDados();
-    // O '?' é um placeholder para evitar SQL Injection (MUITO IMPORTANTE!)
-    const resultado = await db.run('INSERT INTO segredos (texto) VALUES (?)', [textoDoSegredo]);
+    const resultado = await db.run('INSERT INTO segredos (texto, usuario_id) VALUES (?, ?)', [textoDoSegredo, usuarioId]);
     await db.close();
     
     res.status(201).send({
         mensagem: 'Segredo adicionado com sucesso!',
-        id: resultado.lastID // O banco de dados nos dá o ID do item inserido
+        id: resultado.lastID
     });
 });
 
-// UPDATE (PUT) - Agora atualiza no banco de dados
+// UPDATE (PUT) - Atualiza um segredo, SE E SOMENTE SE, pertencer ao usuário logado
 app.put('/segredos/:id', async (req, res) => {
     const idParaEditar = parseInt(req.params.id);
     const novoTexto = req.body.segredo;
-    if (!novoTexto || novoTexto.trim() === "") {
-        return res.status(400).send({ mensagem: 'O segredo não pode ser vazio.' });
-    }
+    const usuarioId = req.usuario.id;
+    // ... (validação do novoTexto) ...
 
     const db = await abrirBancoDeDados();
-    const resultado = await db.run('UPDATE segredos SET texto = ? WHERE id = ?', [novoTexto, idParaEditar]);
+    // A cláusula WHERE agora tem DUAS condições para máxima segurança
+    const resultado = await db.run('UPDATE segredos SET texto = ? WHERE id = ? AND usuario_id = ?', [novoTexto, idParaEditar, usuarioId]);
     await db.close();
 
     if (resultado.changes === 0) {
-        return res.status(404).send({ mensagem: 'Segredo não encontrado.' });
+        return res.status(404).send({ mensagem: 'Segredo não encontrado ou você não tem permissão para editá-lo.' });
     }
 
     res.status(200).send({ mensagem: 'Segredo atualizado com sucesso!' });
 });
 
-// DELETE - Agora apaga do banco de dados
+// DELETE - Deleta um segredo, SE E SOMENTE SE, pertencer ao usuário logado
 app.delete('/segredos/:id', async (req, res) => {
     const idParaApagar = parseInt(req.params.id);
+    const usuarioId = req.usuario.id;
     const db = await abrirBancoDeDados();
-    const resultado = await db.run('DELETE FROM segredos WHERE id = ?', [idParaApagar]);
+    const resultado = await db.run('DELETE FROM segredos WHERE id = ? AND usuario_id = ?', [idParaApagar, usuarioId]);
     await db.close();
 
     if (resultado.changes === 0) {
-        return res.status(404).send({ mensagem: 'Segredo não encontrado.' });
+        return res.status(404).send({ mensagem: 'Segredo não encontrado ou você não tem permissão para deletá-lo.' });
     }
 
     res.status(204).send();
 });
+
+// ... seu app.listen continua aqui no final
 
 app.listen(port, () => {
     console.log(`Servidor rodando em http://localhost:${port}`);
