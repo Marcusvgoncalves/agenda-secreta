@@ -1,26 +1,24 @@
-// app.js CORRIGIDO
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
-const dbPromise = require('./database.js'); // <-- MUDANÇA 1: Importamos a promessa do DB
+const dbPromise = require('./database.js');
 const authRoutes = require('./authRoutes.js');
 
 const app = express();
 
-// Sua configuração do limiter (está correta)
+// Sua configuração do limiter
 const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 5,
+    max: 5, // Você tinha mudado para 5, mantive aqui
     message: { mensagem: 'Muitas tentativas de login a partir deste IP, por favor, tente novamente após 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
 });
 
-// Sua função de autenticação (está correta)
+// Sua função de autenticação
 const autenticar = (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
@@ -41,7 +39,7 @@ app.use(express.json());
 app.use(cors());
 app.use(helmet());
 
-// Rotas de Autenticação com o limiter condicional (está correto)
+// Rotas de Autenticação com o limiter condicional
 if (process.env.NODE_ENV !== 'test') {
     app.use('/auth', loginLimiter, authRoutes);
 } else {
@@ -51,30 +49,27 @@ if (process.env.NODE_ENV !== 'test') {
 // Middleware de autenticação para as rotas de segredos
 app.use('/segredos', autenticar);
 
-// --- ROTAS DE SEGREDOS ATUALIZADAS (USANDO A CONEXÃO ÚNICA) ---
+// --- ROTAS DE SEGREDOS ---
 
 app.get('/segredos', async (req, res) => {
-    const db = await dbPromise; // Usa a conexão existente
+    const db = await dbPromise;
     const segredos = await db.all('SELECT * FROM segredos WHERE usuario_id = ?', [req.usuario.id]);
     res.json(segredos);
-    // SEM db.close()
 });
 
 app.post('/segredos', async (req, res) => {
-    const db = await dbPromise; // Usa a conexão existente
+    const db = await dbPromise;
     const { segredo } = req.body;
     if (!segredo || segredo.trim() === '') {
         return res.status(400).send({ mensagem: 'O segredo não pode ser vazio.' });
     }
     const resultado = await db.run('INSERT INTO segredos (texto, usuario_id) VALUES (?, ?)', [segredo, req.usuario.id]);
     res.status(201).send({ mensagem: 'Segredo adicionado com sucesso!', id: resultado.lastID });
-    // SEM db.close()
 });
 
 app.put('/segredos/:id', async (req, res) => {
-    const db = await dbPromise; // Usa a conexão existente
+    const db = await dbPromise;
     const { segredo } = req.body;
-    // Adicionando a validação que estava faltando no seu código original
     if (!segredo || segredo.trim() === '') {
         return res.status(400).send({ mensagem: 'O segredo não pode ser vazio.' });
     }
@@ -83,17 +78,15 @@ app.put('/segredos/:id', async (req, res) => {
         return res.status(404).send({ mensagem: 'Segredo não encontrado ou você não tem permissão para editá-lo.' });
     }
     res.status(200).send({ mensagem: 'Segredo atualizado com sucesso!' });
-    // SEM db.close()
 });
 
 app.delete('/segredos/:id', async (req, res) => {
-    const db = await dbPromise; // Usa a conexão existente
+    const db = await dbPromise;
     const resultado = await db.run('DELETE FROM segredos WHERE id = ? AND usuario_id = ?', [req.params.id, req.usuario.id]);
     if (resultado.changes === 0) {
         return res.status(404).send({ mensagem: 'Segredo não encontrado ou você não tem permissão para deletá-lo.' });
     }
     res.status(204).send();
-    // SEM db.close()
 });
 
 module.exports = app;

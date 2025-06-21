@@ -39,6 +39,7 @@ describe('Testes das Rotas de Autenticação', () => {
         expect(response.body).toHaveProperty('mensagem', 'Este email já está em uso.');
     });
 
+<<<<<<< HEAD
     // --- ADICIONE OS NOVOS TESTES DE LOGIN AQUI ---
 
     it('Deve autenticar um usuário existente e retornar um token JWT', async () => {
@@ -80,4 +81,6 @@ describe('Testes das Rotas de Autenticação', () => {
         expect(response.body).toHaveProperty('mensagem', 'Credenciais inválidas.');
     });
 
+=======
+>>>>>>> 764da9965afec9b10ab45d0d29c310baa3556a87
 });
