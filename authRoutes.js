@@ -1,4 +1,4 @@
-// authRoutes.js REFATORADO
+// authRoutes.js REFATORADO E FINAL
 
 const express = require('express');
 const bcrypt = require('bcrypt');
@@ -23,7 +23,7 @@ router.post('/register', async (req, res, next) => {
         await db.run('INSERT INTO usuarios (email, senha_hash) VALUES (?, ?)', [email, senhaHash]);
         res.status(201).send({ mensagem: 'Usuário criado com sucesso!' });
     } catch (error) {
-        // Apenas passamos o erro para a central com o 'next'
+        // Apenas passamos o erro para a 'central de emergência'
         next(error); 
     }
 });
@@ -33,15 +33,14 @@ router.post('/login', async (req, res, next) => {
     try {
         const { email, senha } = req.body;
         if (!email || !senha) {
-            // Podemos criar um erro customizado para a central pegar
             const error = new Error('Email e senha são obrigatórios.');
-            error.status = 400; // status customizado
+            error.status = 400; 
             throw error;
         }
-        
+
         const db = await dbPromise;
         const usuario = await db.get('SELECT * FROM usuarios WHERE email = ?', [email]);
-        
+
         if (!usuario) {
             const error = new Error('Credenciais inválidas.');
             error.status = 401;
@@ -57,7 +56,7 @@ router.post('/login', async (req, res, next) => {
 
         const payload = { id: usuario.id, email: usuario.email };
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
-        
+
         res.status(200).json({ token: token });
     } catch (error) {
         next(error); // Passamos qualquer erro para a central

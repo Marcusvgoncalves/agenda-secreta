@@ -56,28 +56,27 @@ app.put('/segredos/:id', async (req, res, next) => { try { /* ... */ } catch(e) 
 app.delete('/segredos/:id', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
 
 
-// --- CENTRAL DE EMERGÊNCIA (MIDDLEWARE DE ERRO) ---
+// --- NOSSA NOVA CENTRAL DE EMERGÊNCIA (MIDDLEWARE DE ERRO) ---
+// Este DEVE ser o último middleware
 app.use((error, req, res, next) => {
-    logger.error({
-        mensagem: error.message,
-        stack: error.stack,
-        rota: req.path,
-        metodo: req.method
-    });
+    logger.error(error); // Sempre logamos o erro
 
+    // Se for um erro de validação do Zod
     if (error instanceof ZodError) {
         return res.status(400).send({ mensagem: "Dados de entrada inválidos.", erros: error.errors });
     }
 
+    // Se for um erro de conflito do banco (email duplicado)
     if (error.code === 'SQLITE_CONSTRAINT') {
         return res.status(409).send({ mensagem: 'Conflito de dados. O email, por exemplo, já pode estar em uso.' });
     }
 
-    // Adicionamos uma verificação para erros de Token inválido/expirado
-    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) {
-        return res.status(401).send({ mensagem: 'Token inválido ou expirado.' });
+    // Se for um erro que nós criamos com um status específico (como na rota de login)
+    if (error.status) {
+        return res.status(error.status).send({ mensagem: error.message });
     }
 
+    // Para todos os outros erros, uma resposta genérica
     return res.status(500).send({ mensagem: 'Ocorreu um erro inesperado no servidor.' });
 });
 
