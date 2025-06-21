@@ -1,3 +1,5 @@
+// database.js (versão final e limpa)
+
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
