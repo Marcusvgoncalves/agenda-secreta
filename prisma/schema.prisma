@@ -1,0 +1,30 @@
+// Em prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo para nossos usuários
+model User {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  senha_hash String
+  secrets    Secret[] // Um usuário pode ter muitos segredos
+}
+
+// Modelo para nossos segredos
+model Secret {
+  id           Int      @id @default(autoincrement())
+  texto        String
+  data_criacao DateTime @default(now())
+  concluido    Boolean  @default(false)
+
+  // Relacionamento: Este segredo pertence a um usuário
+  author     User     @relation(fields: [authorId], references: [id])
+  authorId   Int
+}
