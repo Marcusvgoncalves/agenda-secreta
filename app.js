@@ -51,7 +51,25 @@ app.use('/segredos', autenticar);
 // --- ROTAS DE SEGREDOS ---
 // (Suas rotas de segredos GET, POST, PUT, DELETE ficam aqui, sem alterações)
 app.get('/segredos', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
-app.post('/segredos', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
+app.post('/segredos', async (req, res, next) => {
+    try {
+        const db = await dbPromise;
+        const { segredo } = req.body;
+        if (!segredo || segredo.trim() === '') {
+            return res.status(400).send({ mensagem: 'O segredo não pode ser vazio.' });
+        }
+
+        const resultado = await db.run('INSERT INTO segredos (texto, usuario_id) VALUES (?, ?)', [segredo, req.usuario.id]);
+
+        // BUSCA O OBJETO COMPLETO QUE ACABOU DE SER CRIADO
+        const novoSegredo = await db.get('SELECT * FROM segredos WHERE id = ?', [resultado.lastID]);
+
+        // RETORNA O OBJETO COMPLETO
+        res.status(201).json(novoSegredo);
+    } catch (e) {
+        next(e);
+    }
+});
 app.put('/segredos/:id', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
 app.delete('/segredos/:id', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
 

@@ -23,3 +23,11 @@
 {"level":"info","message":"Banco de dados conectado e pronto."}
 {"level":"info","message":"Servidor rodando na porta 3000"}
 {"level":"info","message":"Banco de dados conectado e pronto."}
+{"issues":[{"code":"too_small","exact":false,"inclusive":true,"message":"A senha deve ter no mínimo 8 caracteres.","minimum":8,"path":["senha"],"type":"string"}],"level":"error","name":"ZodError"}
+{"issues":[{"code":"invalid_string","message":"Formato de email inválido.","path":["email"],"validation":"email"},{"code":"too_small","exact":false,"inclusive":true,"message":"A senha deve ter no mínimo 8 caracteres.","minimum":8,"path":["senha"],"type":"string"}],"level":"error","name":"ZodError"}
+{"level":"info","message":"Servidor rodando na porta 3000"}
+{"level":"info","message":"Banco de dados conectado e pronto."}
+{"level":"info","message":"Servidor rodando na porta 3000"}
+{"level":"info","message":"Banco de dados conectado e pronto."}
+{"level":"info","message":"Servidor rodando na porta 3000"}
+{"level":"info","message":"Banco de dados conectado e pronto."}
