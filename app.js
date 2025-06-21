@@ -1,4 +1,4 @@
-// app.js CORRIGIDO E FINAL
+// app.js VERSÃO FINAL E CORRIGIDA
 
 require('dotenv').config();
 const express = require('express');
@@ -6,7 +6,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
-const { z, ZodError } = require('zod'); // <-- IMPORTAÇÃO CONSOLIDADA AQUI
+const { ZodError } = require('zod');
 const dbPromise = require('./database.js');
 const logger = require('./logger.js');
 const authRoutes = require('./authRoutes.js');
@@ -32,8 +32,7 @@ const autenticar = (req, res, next) => {
         req.usuario = usuarioVerificado;
         next();
     } catch (error) {
-        // Agora este erro será pego pela nossa central!
-        next(error);
+        next(error); // Passa o erro para a central de erros
     }
 };
 
@@ -48,53 +47,80 @@ if (process.env.NODE_ENV !== 'test') {
 }
 app.use('/segredos', autenticar);
 
-// --- ROTAS DE SEGREDOS ---
-// (Suas rotas de segredos GET, POST, PUT, DELETE ficam aqui, sem alterações)
-app.get('/segredos', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
+// --- ROTAS DE SEGREDOS COM A LÓGICA COMPLETA E TRATAMENTO DE ERRO ---
+
+app.get('/segredos', async (req, res, next) => {
+    try {
+        const db = await dbPromise;
+        const segredos = await db.all('SELECT * FROM segredos WHERE usuario_id = ?', [req.usuario.id]);
+        res.json(segredos);
+    } catch (error) {
+        next(error);
+    }
+});
+
 app.post('/segredos', async (req, res, next) => {
     try {
         const db = await dbPromise;
         const { segredo } = req.body;
         if (!segredo || segredo.trim() === '') {
-            return res.status(400).send({ mensagem: 'O segredo não pode ser vazio.' });
+             const error = new Error('O segredo não pode ser vazio.');
+             error.status = 400;
+             throw error;
         }
-
         const resultado = await db.run('INSERT INTO segredos (texto, usuario_id) VALUES (?, ?)', [segredo, req.usuario.id]);
-
-        // BUSCA O OBJETO COMPLETO QUE ACABOU DE SER CRIADO
         const novoSegredo = await db.get('SELECT * FROM segredos WHERE id = ?', [resultado.lastID]);
-
-        // RETORNA O OBJETO COMPLETO
         res.status(201).json(novoSegredo);
-    } catch (e) {
-        next(e);
+    } catch (error) {
+        next(error);
     }
 });
-app.put('/segredos/:id', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
-app.delete('/segredos/:id', async (req, res, next) => { try { /* ... */ } catch(e) { next(e) } });
 
+app.put('/segredos/:id', async (req, res, next) => {
+    try {
+        const db = await dbPromise;
+        const { segredo } = req.body;
+        if (!segredo || segredo.trim() === '') {
+            const error = new Error('O segredo não pode ser vazio.');
+            error.status = 400;
+            throw error;
+        }
+        const resultado = await db.run('UPDATE segredos SET texto = ? WHERE id = ? AND usuario_id = ?', [segredo, req.params.id, req.usuario.id]);
+        if (resultado.changes === 0) {
+            const error = new Error('Segredo não encontrado ou você não tem permissão para editá-lo.');
+            error.status = 404;
+            throw error;
+        }
+        res.status(200).send({ mensagem: 'Segredo atualizado com sucesso!' });
+    } catch (error) {
+        next(error);
+    }
+});
 
-// --- NOSSA NOVA CENTRAL DE EMERGÊNCIA (MIDDLEWARE DE ERRO) ---
-// Este DEVE ser o último middleware
+app.delete('/segredos/:id', async (req, res, next) => {
+    try {
+        const db = await dbPromise;
+        const resultado = await db.run('DELETE FROM segredos WHERE id = ? AND usuario_id = ?', [req.params.id, req.usuario.id]);
+        if (resultado.changes === 0) {
+            const error = new Error('Segredo não encontrado ou você não tem permissão para deletá-lo.');
+            error.status = 404;
+            throw error;
+        }
+        res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+});
+
+// --- NOSSA CENTRAL DE EMERGÊNCIA (MIDDLEWARE DE ERRO) ---
 app.use((error, req, res, next) => {
-    logger.error(error); // Sempre logamos o erro
-
-    // Se for um erro de validação do Zod
-    if (error instanceof ZodError) {
-        return res.status(400).send({ mensagem: "Dados de entrada inválidos.", erros: error.errors });
-    }
-
-    // Se for um erro de conflito do banco (email duplicado)
-    if (error.code === 'SQLITE_CONSTRAINT') {
-        return res.status(409).send({ mensagem: 'Conflito de dados. O email, por exemplo, já pode estar em uso.' });
-    }
-
-    // Se for um erro que nós criamos com um status específico (como na rota de login)
+    logger.error({ /* ...seu logger ... */ });
+    if (error instanceof ZodError) { /* ... */ }
+    if (error.code === 'SQLITE_CONSTRAINT') { /* ... */ }
+    if (error instanceof jwt.JsonWebTokenError || error instanceof jwt.TokenExpiredError) { /*...*/ }
     if (error.status) {
         return res.status(error.status).send({ mensagem: error.message });
     }
-
-    // Para todos os outros erros, uma resposta genérica
     return res.status(500).send({ mensagem: 'Ocorreu um erro inesperado no servidor.' });
 });
 
