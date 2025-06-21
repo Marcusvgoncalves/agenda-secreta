@@ -1,0 +1,34 @@
+# Versão do formato do docker-compose que estamos usando
+version: '3.8'
+
+# Lista de todos os serviços que nossa aplicação precisa
+services:
+  # O nome do nosso serviço de banco de dados.
+  # Este nome é importante, pois será o "endereço" do banco para a nossa API.
+  db:
+    # A imagem Docker que queremos usar. Estamos pegando a imagem oficial do
+    # PostgreSQL na versão 16, usando a base "alpine", que é mais leve.
+    image: postgres:16-alpine
+    
+    # Garante que o contêiner do banco de dados sempre reinicie automaticamente
+    # se ele parar por algum motivo (ex: se o computador for reiniciado).
+    restart: always
+    
+    # Variáveis de ambiente para configurar o contêiner do PostgreSQL.
+    # É aqui que definimos o usuário e a senha do nosso banco de dados.
+    environment:
+      POSTGRES_USER: seu_usuario_dev
+      POSTGRES_PASSWORD: sua_senha_super_segura
+      POSTGRES_DB: agenda_secreta_db
+      
+    # Mapeamento de Portas. Formato: "PORTA_DA_SUA_MAQUINA:PORTA_DO_CONTAINER"
+    # A porta 5432 é a padrão do PostgreSQL. Esta linha permite que possamos nos
+    # conectar ao banco de dados a partir da nossa máquina Windows na porta 5432.
+    ports:
+      - "5432:5432"
+      
+    # Volumes. A parte mais importante para garantir que nossos dados não sejam perdidos.
+    # Sincroniza a pasta "./postgres-data" do nosso projeto com a pasta onde o
+    # PostgreSQL guarda os dados dentro do contêiner.
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
